@@ -56,5 +56,9 @@ export class SensorController {
     async deleteSensorDataUnoptimized(@Param() params: DeleteSensorReadingDto) {
         return await this.sensorService.deleteReadingsByIntervalUnoptimized(params.interval,params.sensorId);
     }
+    @Get('benchmarkWrite')
+    async benchmarkWrite() {
+        return await this.sensorService.seedBenchmark();
+    }
     
 }

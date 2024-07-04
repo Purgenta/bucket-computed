@@ -5,6 +5,7 @@ import { Connection, Model } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { CreateSensorReadingDto } from '../dto/create.sensor.reading.dto';
 import { SensorReading } from '../entities/unoptimized/sensor.reading.schema';
+import {  faker as Faker } from '@faker-js/faker';
 @Injectable()
 export class SensorService {
     
@@ -130,6 +131,9 @@ export class SensorService {
             throw new Error(`Failed to get average sensor readings: ${error}`);
         }
     }
+    async createDummyOptimizedAndUnoptimizedSensorReadings() {
+
+    }
     async getUnoptimizedSensorReadingByInterval(id: string,interval: number){
         try {
             const startTime = Date.now();
@@ -140,6 +144,45 @@ export class SensorService {
         } catch (error) {
             throw new Error(`Failed to get average sensor readings: ${error}`);
         }
+    }
+    async seedBenchmark() {
+            // generate one hundred sensor readings
+            for(let i = 0; i < 10; i++) {
+              const sensorId = Faker.database.mongodbObjectId();
+              const days = Faker.date.betweens({from: new Date(2024, 1, 1), to: new Date(2024, 12, 31),count: 365});
+              const data: SensorReadings[] = [];
+              const unoptimizedData: SensorReading[] = [];  
+              for(let j = 1; j <= 10; j++) {
+                const interval = `${j}hour`;
+                const readingValues = [];     
+                const previousDate = new Date(days[i]).setHours(j - 1);
+                const nextDate = new Date(days[i]).setHours(j + 1);
+                for(let k = 0; k < 10; k++) {
+                  readingValues.push({value : Faker.number.float({min: 20,max: 30}), date: Faker.date.between({from: previousDate, to: nextDate})});
+                  const unoptimizedReading: SensorReading = {sensorId, value: Faker.number.float({min: 20,max: 30}), date: Faker.date.between({from: previousDate, to: nextDate}), location: Faker.location.city(), sensorType: "temperature", unit: 'Celsius', description: Faker.lorem.sentence()};
+                  unoptimizedData.push(unoptimizedReading);
+                }
+                const createdSensorReadings: SensorReadings = {
+                  sensorId,
+                  description: Faker.lorem.sentence(),
+                  location: Faker.location.city(),
+                  sensorType: "temperature",
+                  unit: 'Celsius',
+                  date: days[i],
+                  interval,
+                  avg: readingValues.reduce((acc,curr) => acc + curr.value,0) / readingValues.length,
+                  values: readingValues
+                };
+                data.push(createdSensorReadings);
+              }
+              const startUnoptimizedTime = Date.now();
+              await this.createUnoptimizedSensorReading(unoptimizedData);
+              const endUnoptimizedTime = Date.now();
+              const startOptimizedTime = Date.now();
+              await this.createSensorReadings(data);
+              const endOptimizedTime = Date.now();
+              return {timeOptimized: endOptimizedTime - startOptimizedTime,timeUnoptimized: endUnoptimizedTime - startUnoptimizedTime}
+            }
     }
     async getAverageOptimizedSensorReadings(id: string){
         try {
